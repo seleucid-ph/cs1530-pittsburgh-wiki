@@ -84,3 +84,16 @@ if (typeof module !== "undefined" && module.exports) {
         getPendingSubmissions, approveSubmission, rejectSubmission
     };
 }
+async function request(path, options = {}) {
+    try {
+        const res = await fetch(`${BASE_URL}${path}`, {
+            credentials: "include",
+            ...options
+        });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        return await res.json();
+    } catch (err) {
+        console.error(`API error on ${path}:`, err);
+        return { error: err.message };
+    }
+}
