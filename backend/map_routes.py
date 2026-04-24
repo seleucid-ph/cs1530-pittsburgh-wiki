@@ -1,13 +1,3 @@
-
-"""
-map_routes.py, register in wiki.py with:
-    from map_routes import map_bp
-    app.register_blueprint(map_bp)
-
-Expects James's entries table to have a GEOGRAPHY(POINT, 4326) column named 'location'
-with a GiST index:  CREATE INDEX ON entries USING GIST(location);
-"""
-
 import os
 import psycopg2
 import psycopg2.extras
@@ -22,7 +12,7 @@ PGH_BOUNDS = {
     "min_lng": -80.0952, "max_lng": -79.8650,
 }
 
-# Same boundary as PGH_BOUNDS but as a WKT polygon string so we can pass it directly to ST_GeomFromText.
+# Same boundary as PGH_BOUNDS but as a WKT polygon string for ST_GeomFromText.
 PGH_POLYGON_WKT = (
     "POLYGON((-80.0952 40.3617, -79.8650 40.3617, "
     "-79.8650 40.5011, -80.0952 40.5011, -80.0952 40.3617))"
@@ -41,6 +31,8 @@ def map_page():
 
 @map_bp.route("/api/map")
 def api_map():
+    # neighborhood and category are now names we look up against James's
+    # neighborhoods and categories tables rather than plain string columns
     neighborhood = request.args.get("neighborhood", "").strip()
     category     = request.args.get("category",     "").strip()
     keyword      = request.args.get("q",            "").strip()
@@ -68,35 +60,43 @@ def api_map():
         f"{vp_min_lng} {vp_min_lat}))"
     )
 
-    # ST_Y/ST_X pull lat/lng out of the GEOGRAPHY column as plain floats for the JSON response.
-    # The ::geometry cast is needed because ST_Y/ST_X don't accept GEOGRAPHY directly.
+    # James's schema stores approved content in submissions with status='approved'.
+    # We join categories and neighborhoods to get their names for the frontend,
+    # and use the trigger-maintained geom column for the spatial query.
+    # ST_Y/ST_X need the ::geometry cast because they don't accept GEOGRAPHY directly.
     sql = """
         SELECT
-            e.id, e.page_id, e.title, e.neighborhood, e.category, e.excerpt,
-            ST_Y(e.location::geometry) AS lat,
-            ST_X(e.location::geometry) AS lng
-        FROM entries e
+            s.id,
+            s.title,
+            s.description AS excerpt,
+            c.name  AS category,
+            n.name  AS neighborhood,
+            s.latitude  AS lat,
+            s.longitude AS lng
+        FROM submissions s
+        LEFT JOIN categories    c ON s.category_id    = c.id
+        LEFT JOIN neighborhoods n ON s.neighborhood_id = n.id
         WHERE
-            e.status = 'approved'
-            AND e.location IS NOT NULL
-            AND ST_Within(e.location::geometry, ST_GeomFromText(%s, 4326))
+            s.status = 'approved'
+            AND s.geom IS NOT NULL
+            AND ST_Within(s.geom, ST_GeomFromText(%s, 4326))
     """
     params = [viewport_wkt]
 
     if neighborhood:
-        sql += " AND e.neighborhood = %s"
+        sql += " AND n.name = %s"
         params.append(neighborhood)
 
     if category:
-        sql += " AND e.category = %s"
+        sql += " AND c.name = %s"
         params.append(category)
 
     if keyword:
-        sql += " AND (e.title ILIKE %s OR e.excerpt ILIKE %s)"
+        sql += " AND (s.title ILIKE %s OR s.description ILIKE %s)"
         like = f"%{keyword}%"
         params.extend([like, like])
 
-    sql += " ORDER BY e.title LIMIT 500;"
+    sql += " ORDER BY s.title LIMIT 500;"
 
     try:
         conn = get_db()
@@ -112,15 +112,15 @@ def api_map():
 
 @map_bp.route("/api/neighborhoods")
 def api_neighborhoods():
-    """Returns neighborhoods that have approved, located entries, used to populate the sidebar dropdown."""
+    """Returns neighborhoods that have approved submissions, used to populate the sidebar dropdown."""
     sql = """
-        SELECT DISTINCT neighborhood
-        FROM entries
-        WHERE status = 'approved'
-          AND neighborhood IS NOT NULL
-          AND location IS NOT NULL
-          AND ST_Within(location::geometry, ST_GeomFromText(%s, 4326))
-        ORDER BY neighborhood;
+        SELECT DISTINCT n.name
+        FROM neighborhoods n
+        JOIN submissions s ON s.neighborhood_id = n.id
+        WHERE s.status = 'approved'
+          AND s.geom IS NOT NULL
+          AND ST_Within(s.geom, ST_GeomFromText(%s, 4326))
+        ORDER BY n.name;
     """
     try:
         conn = get_db()
