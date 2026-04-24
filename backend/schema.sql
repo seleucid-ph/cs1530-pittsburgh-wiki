@@ -1,5 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- enum means the DB itself will reject anything that isn't one of these three values
+CREATE TYPE submission_status AS ENUM ('pending', 'approved', 'rejected');
+
 CREATE TABLE IF NOT EXISTS users (
     id            SERIAL PRIMARY KEY,
     username      VARCHAR(100) UNIQUE NOT NULL,
@@ -21,7 +24,7 @@ CREATE TABLE IF NOT EXISTS pages (
     updated_at   TIMESTAMP DEFAULT NOW()
 );
 
--- submissions sit here waiting for a moderator to approve or reject them
+-- submissions use the same GEOGRAPHY column as entries so coordinates are stored the same way everywhere
 CREATE TABLE IF NOT EXISTS submissions (
     id           SERIAL PRIMARY KEY,
     user_id      INTEGER REFERENCES users(id),
@@ -30,11 +33,9 @@ CREATE TABLE IF NOT EXISTS submissions (
     category     VARCHAR(50),
     excerpt      TEXT,
     content      TEXT,
-    lng          FLOAT,
-    lat          FLOAT,
-    status       VARCHAR(20) DEFAULT 'pending',
-    reviewed_by  INTEGER REFERENCES users(id),  -- tracks which moderator acted on it
-    submitted_at TIMESTAMP DEFAULT NOW(),
+    location     GEOGRAPHY(POINT, 4326) NOT NULL,
+    status       submission_status DEFAULT 'pending',
+    reviewed_by  INTEGER REFERENCES users(id),  -- which moderator acted on it
     reviewed_at  TIMESTAMP
 );
 
@@ -46,17 +47,18 @@ CREATE TABLE IF NOT EXISTS entries (
     neighborhood VARCHAR(100),
     category     VARCHAR(50),
     excerpt      TEXT,
-    location     GEOGRAPHY(POINT, 4326),
-    status       VARCHAR(20) DEFAULT 'approved',
+    location     GEOGRAPHY(POINT, 4326) NOT NULL,
+    status       submission_status DEFAULT 'approved',
     created_at   TIMESTAMP DEFAULT NOW()
 );
 
 -- GiST index is what makes the PostGIS ST_Within queries fast enough to use
-CREATE INDEX IF NOT EXISTS idx_entries_location ON entries USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_entries_location    ON entries USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_submissions_location ON submissions USING GIST(location);
 
 -- these let the search and filter endpoints skip full table scans
 CREATE INDEX IF NOT EXISTS idx_entries_neighborhood ON entries(neighborhood);
-CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category);
+CREATE INDEX IF NOT EXISTS idx_entries_category     ON entries(category);
 
 -- GIN index for full text search across title and excerpt so GET /api/search doesn't crawl
 CREATE INDEX IF NOT EXISTS idx_entries_fts ON entries

@@ -6,8 +6,8 @@ conn = psycopg2.connect(
 )
 cur = conn.cursor()
 
-# Create a test user to act as the submitter so the foreign key on submissions is satisfied.
-# In production this would be a real registered user from Aneesha's auth service.
+# need a real user row so the foreign key on submissions doesn't blow up,
+# in production this would come from Aneesha's signup endpoint
 cur.execute("""
     INSERT INTO users (username, email, password_hash)
     VALUES ('seed_user', 'seed@test.local', 'not_a_real_hash')
@@ -22,7 +22,7 @@ else:
     user_id = cur.fetchone()[0]
 
 # Each tuple is (title, neighborhood, category, excerpt, lng, lat).
-# Longitude comes first in ST_MakePoint because PostGIS uses (x, y) which is (lng, lat).
+# lng comes first in ST_MakePoint because PostGIS treats coordinates as (x, y) not (lat, lng).
 submissions = [
     (
         "Point State Park",
@@ -85,37 +85,36 @@ submissions = [
 approved = 0
 for title, neighborhood, category, excerpt, lng, lat in submissions:
 
-    # Step 1: insert into submissions as pending, same as Aaron's POST /api/submissions endpoint does
+    # insert as pending first, same as what Aaron's POST /api/submissions will do
     cur.execute("""
-        INSERT INTO submissions (user_id, title, neighborhood, category, excerpt, lng, lat, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
-        ON CONFLICT DO NOTHING
+        INSERT INTO submissions (user_id, title, neighborhood, category, excerpt, location, status)
+        VALUES (
+            %s, %s, %s, %s, %s,
+            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+            'pending'
+        )
         RETURNING id;
     """, (user_id, title, neighborhood, category, excerpt, lng, lat))
-    row = cur.fetchone()
-    if not row:
-        continue
-    submission_id = row[0]
+    submission_id = cur.fetchone()[0]
 
-    # Step 2: create the page record that the entry will reference
+    # create the page so entries has something to reference
     cur.execute("""
         INSERT INTO pages (title) VALUES (%s) RETURNING id;
     """, (title,))
     page_id = cur.fetchone()[0]
 
-    # Step 3: insert into entries as approved, same as what the moderation approve endpoint does.
-    # ST_MakePoint takes (lng, lat) and we cast to geography so ST_Within works in map_routes.py.
+    # approve into entries, same as what the moderation approve endpoint will do
+    # the ::geography cast is needed so ST_Within in map_routes.py works
     cur.execute("""
         INSERT INTO entries (page_id, title, neighborhood, category, excerpt, location, status)
         VALUES (
             %s, %s, %s, %s, %s,
             ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
             'approved'
-        )
-        ON CONFLICT DO NOTHING;
+        );
     """, (page_id, title, neighborhood, category, excerpt, lng, lat))
 
-    # Step 4: mark the submission as approved so the moderation queue reflects it correctly
+    # flip the submission to approved so the moderation queue stays consistent
     cur.execute("""
         UPDATE submissions SET status = 'approved' WHERE id = %s;
     """, (submission_id,))
