@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pittsburgh Wiki — Map</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #F0D98A;
+      --steel: #1C2B3A;
+      --cream: #F7F3EC;
+      --cream-dark: #EDE7D9;
+      --text-primary: #1C2B3A;
+      --text-muted: #5A6E80;
+      --white: #FFFFFF;
+      --sidebar-w: 340px;
+    }
+
+    html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text-primary); }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 56px;
+      background: var(--steel);
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 20px;
+      border-bottom: 2px solid var(--gold);
+    }
+    nav .brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.02em;
+      text-decoration: none;
+    }
+    nav .brand span { color: var(--white); font-weight: 500; }
+    nav .nav-links { display: flex; gap: 4px; margin-left: auto; }
+    nav .nav-links a {
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-size: 13px; font-weight: 400;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav .nav-links a:hover { background: rgba(255,255,255,0.08); color: var(--white); }
+    nav .nav-links a.active { background: rgba(201,168,76,0.2); color: var(--gold); }
+    nav .nav-links a.btn-submit {
+      background: var(--gold); color: var(--steel);
+      font-weight: 500; margin-left: 8px;
+    }
+    nav .nav-links a.btn-submit:hover { background: var(--gold-light); }
+
+    /* fixed layout fills the viewport below the nav */
+    .layout {
+      position: fixed;
+      top: 56px; left: 0; right: 0; bottom: 0;
+      display: flex;
+    }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--white);
+      border-right: 1px solid var(--cream-dark);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .sidebar-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px; font-weight: 700;
+      color: var(--steel);
+      margin-bottom: 12px;
+    }
+    .search-wrap { position: relative; }
+    .search-wrap input {
+      width: 100%;
+      padding: 9px 36px 9px 12px;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 8px;
+      font-size: 13px; font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--gold); background: var(--white); }
+    .search-wrap input::placeholder { color: var(--text-muted); }
+    .search-icon {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      width: 16px; height: 16px; opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .filter-row {
+      padding: 10px 20px 0;
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .chip {
+      font-size: 11px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1.5px solid var(--cream-dark);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--gold); color: var(--steel); }
+    .chip.active { background: var(--gold); border-color: var(--gold); color: var(--steel); font-weight: 600; }
+
+    .neighborhood-bar {
+      padding: 10px 20px 14px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .neighborhood-bar select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 8px;
+      font-size: 13px; font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text-primary);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      /* inline SVG chevron so we don't need a separate icon file */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235A6E80'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .neighborhood-bar select:focus { border-color: var(--gold); }
+
+    .results-count {
+      padding: 10px 20px 6px;
+      font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .entry-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 12px 12px;
+    }
+    .entry-list::-webkit-scrollbar { width: 4px; }
+    .entry-list::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 2px; }
+
+    .entry-card {
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.12s;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .entry-card:hover { background: var(--cream); }
+    .entry-card.selected { background: #FDF8EE; border-left: 3px solid var(--gold); padding-left: 9px; }
+    .entry-card:last-child { border-bottom: none; }
+    .entry-card .entry-title { font-size: 14px; font-weight: 500; color: var(--steel); margin-bottom: 3px; line-height: 1.3; }
+    .entry-card .entry-nbhd {
+      font-size: 11px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .entry-card .entry-nbhd::before {
+      content: '';
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--gold);
+    }
+    .entry-card .entry-cat {
+      display: inline-block; margin-top: 6px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .cat-history  { background: #EEF3FB; color: #2558A7; }
+    .cat-landmark { background: #EAF3DE; color: #3B6D11; }
+    .cat-culture  { background: #FAEEDA; color: #854F0B; }
+    .cat-nature   { background: #E1F5EE; color: #0F6E56; }
+    .cat-food     { background: #FAECE7; color: #993C1D; }
+    .cat-other    { background: #F1EFE8; color: #5F5E5A; }
+
+    .empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .empty-state .big { font-size: 32px; margin-bottom: 10px; }
+
+    .loading-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .spinner {
+      width: 24px; height: 24px; margin: 0 auto 12px;
+      border: 2px solid var(--cream-dark);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #map { flex: 1; background: #D4C8B0; }
+
+    /* override Leaflet's default popup chrome so it matches our design */
+    .leaflet-popup-content-wrapper {
+      border-radius: 10px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+    .leaflet-popup-content { margin: 0 !important; width: auto !important; min-width: 220px; }
+    .leaflet-popup-tip-container { display: none; }
+
+    .popup-inner { padding: 14px 16px; font-family: 'DM Sans', sans-serif; }
+    .popup-inner .popup-cat { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .popup-inner .popup-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--steel); margin-bottom: 4px; line-height: 1.3; }
+    .popup-inner .popup-nbhd { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+    .popup-inner .popup-excerpt { font-size: 12px; color: var(--text-muted); line-height: 1.55; border-top: 1px solid var(--cream-dark); padding-top: 8px; margin-top: 4px; }
+    .popup-inner .popup-link { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 500; color: var(--gold); text-decoration: none; }
+    .popup-inner .popup-link:hover { text-decoration: underline; }
+
+    /* override MarkerCluster's default blue cluster icons to match our color scheme */
+    .marker-cluster-small,
+    .marker-cluster-medium,
+    .marker-cluster-large { background: rgba(28,43,58,0.2) !important; }
+    .marker-cluster-small div,
+    .marker-cluster-medium div,
+    .marker-cluster-large div {
+      background: var(--steel) !important;
+      color: var(--gold) !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-weight: 600 !important;
+      border: 2px solid var(--gold) !important;
+    }
+
+    .map-badge {
+      position: absolute; bottom: 20px; left: calc(var(--sidebar-w) + 16px); z-index: 800;
+      background: var(--steel); color: var(--gold);
+      font-size: 12px; font-weight: 500; padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--gold);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .map-badge.visible { opacity: 1; }
+
+    .error-banner {
+      display: none;
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 900;
+      background: #FAECE7; color: #993C1D;
+      font-size: 12px; padding: 8px 16px; border-radius: 8px;
+      border: 1px solid #F09575;
+    }
+
+    @media (max-width: 700px) {
+      :root { --sidebar-w: 100vw; }
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; height: 45%; flex-shrink: 0; }
+      #map { flex: 1; }
+      .map-badge { left: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand">Pittsburgh <span>Wiki</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/map" class="active">Map</a>
+    <a href="/pages">Articles</a>
+    <a href="/search">Search</a>
+    <a href="/submit" class="btn-submit">+ Submit</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Explore Pittsburgh</h2>
+      <div class="search-wrap">
+        <input type="text" id="search-input" placeholder="Search entries…" autocomplete="off">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="filter-row" id="category-filters">
+      <button class="chip active" data-cat="">All</button>
+      <button class="chip" data-cat="history">History</button>
+      <button class="chip" data-cat="landmark">Landmark</button>
+      <button class="chip" data-cat="culture">Culture</button>
+      <button class="chip" data-cat="nature">Nature</button>
+      <button class="chip" data-cat="food">Food</button>
+    </div>
+
+    <div class="neighborhood-bar">
+      <select id="neighborhood-select">
+        <option value="">All neighborhoods</option>
+        <option value="Downtown">Downtown</option>
+        <option value="Oakland">Oakland</option>
+        <option value="Shadyside">Shadyside</option>
+        <option value="Squirrel Hill">Squirrel Hill</option>
+        <option value="Lawrenceville">Lawrenceville</option>
+        <option value="Strip District">Strip District</option>
+        <option value="North Shore">North Shore</option>
+        <option value="South Side">South Side</option>
+        <option value="Mount Washington">Mount Washington</option>
+        <option value="East Liberty">East Liberty</option>
+        <option value="Bloomfield">Bloomfield</option>
+        <option value="Polish Hill">Polish Hill</option>
+        <option value="Hazelwood">Hazelwood</option>
+        <option value="Carrick">Carrick</option>
+        <option value="Beechview">Beechview</option>
+        <option value="Brookline">Brookline</option>
+        <option value="Homewood">Homewood</option>
+        <option value="Garfield">Garfield</option>
+      </select>
+    </div>
+
+    <div class="results-count" id="results-count">Loading…</div>
+    <div class="entry-list" id="entry-list">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Fetching entries…
+      </div>
+    </div>
+  </aside>
+
+  <div id="map"></div>
+  <div class="map-badge" id="map-badge"></div>
+  <div class="error-banner" id="error-banner"></div>
+</div>
+
+<!-- Khuslen's api.js, getMapLocations() is defined there and called below -->
+<script src="/static/js/api.js"></script>
+
+<script>
+const PGH_CENTER = [40.4406, -79.9959];
+// maxBounds locks Leaflet's pan/zoom to Pittsburgh and PostGIS enforces the same on the server side
+const PGH_BOUNDS = [[40.3617, -80.0952], [40.5011, -79.8650]];
+
+const CATEGORY_COLORS = {
+  history:  { bg: '#EEF3FB', fg: '#2558A7', label: 'History'  },
+  landmark: { bg: '#EAF3DE', fg: '#3B6D11', label: 'Landmark' },
+  culture:  { bg: '#FAEEDA', fg: '#854F0B', label: 'Culture'  },
+  nature:   { bg: '#E1F5EE', fg: '#0F6E56', label: 'Nature'   },
+  food:     { bg: '#FAECE7', fg: '#993C1D', label: 'Food'     },
+  other:    { bg: '#F1EFE8', fg: '#5F5E5A', label: 'Other'    },
+};
+
+function catClass(cat) { return 'cat-' + (CATEGORY_COLORS[cat] ? cat : 'other'); }
+function catLabel(cat) { return (CATEGORY_COLORS[cat] || CATEGORY_COLORS.other).label; }
+
+const map = L.map('map', {
+  center: PGH_CENTER,
+  zoom: 13,
+  minZoom: 11,
+  maxZoom: 18,
+  maxBounds: PGH_BOUNDS,
+  maxBoundsViscosity: 0.85, // controls how sticky the boundary feels, 1.0 would be a hard stop
+  zoomControl: false,
+});
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap contributors',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// Dashed rectangle showing the Pittsburgh boundary on the map
+L.rectangle(PGH_BOUNDS, {
+  color: '#C9A84C', weight: 1.5, fill: false, dashArray: '6 4', opacity: 0.35,
+}).addTo(map);
+
+const markerCluster = L.markerClusterGroup({
+  showCoverageOnHover: false,
+  maxClusterRadius: 50,
+  iconCreateFunction(cluster) {
+    return L.divIcon({
+      html: `<div class="marker-cluster-inner">${cluster.getChildCount()}</div>`,
+      className: 'marker-cluster marker-cluster-custom',
+      iconSize: L.point(36, 36),
+    });
+  }
+});
+map.addLayer(markerCluster);
+
+// pin icon shaped like a rotated diamond, colored by category with the first letter inside
+function makeIcon(cat) {
+  const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other;
+  const initial = catLabel(cat)[0] || '?';
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:28px;height:28px;background:${colors.fg};border:2.5px solid #C9A84C;
+      border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;
+      justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.25);">
+      <span style="transform:rotate(45deg);color:#fff;font-weight:700;font-size:10px;font-family:sans-serif;">${initial}</span>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],  // anchors the icon at its bottom tip so it points to the location
+    popupAnchor: [0, -30],
+  });
+}
+
+let allEntries = [];
+let filteredEntries = [];
+let markerMap = {};  // maps entry id to its Leaflet marker so sidebar clicks can open the right popup
+let selectedId = null;
+let activeCategory = '';
+let activeNeighborhood = '';
+let searchQuery = '';
+
+async function loadEntries() {
+  showLoading();
+  hideError();
+  try {
+    // getMapLocations comes from Khuslen's api.js and passes neighborhood as a query param
+    const data = await getMapLocations(activeNeighborhood);
+    if (data.error) throw new Error(data.error);
+    // normalize the response shape in case the API wraps results in an object
+    allEntries = Array.isArray(data) ? data : (data.entries || data.locations || []);
+    applyFilters();
+  } catch (err) {
+    showError('Could not load entries: ' + err.message);
+    showEmptyState();
+  }
+}
+
+// Client side filtering runs on whatever the server already returned.
+// Neighborhood changes trigger a new loadEntries() call to the server; category and search filter locally.
+function applyFilters() {
+  const q = searchQuery.trim().toLowerCase();
+  filteredEntries = allEntries.filter(e => {
+    const matchCat  = !activeCategory      || e.category     === activeCategory;
+    const matchNbhd = !activeNeighborhood  || e.neighborhood === activeNeighborhood;
+    const matchQ    = !q
+      || (e.title        && e.title.toLowerCase().includes(q))
+      || (e.neighborhood && e.neighborhood.toLowerCase().includes(q))
+      || (e.excerpt      && e.excerpt.toLowerCase().includes(q));
+    return matchCat && matchNbhd && matchQ;
+  });
+  renderSidebar();
+  renderMarkers();
+}
+
+function renderSidebar() {
+  const list  = document.getElementById('entry-list');
+  const count = document.getElementById('results-count');
+  count.textContent = filteredEntries.length === 0
+    ? 'No entries found'
+    : filteredEntries.length + (filteredEntries.length === 1 ? ' entry' : ' entries');
+
+  if (filteredEntries.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="big">🗺️</div>
+      No wiki entries match these filters.<br>
+      <a href="/submit" style="color:#C9A84C;font-weight:500;">Be the first to add one!</a>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filteredEntries.map(e => `
+    <div class="entry-card${e.id === selectedId ? ' selected' : ''}"
+         data-id="${e.id}"
+         onclick="selectEntry('${e.id}')">
+      <div class="entry-title">${escHtml(e.title)}</div>
+      <div class="entry-nbhd">${escHtml(e.neighborhood || 'Pittsburgh')}</div>
+      <span class="entry-cat ${catClass(e.category)}">${catLabel(e.category)}</span>
+    </div>
+  `).join('');
+}
+
+function renderMarkers() {
+  markerCluster.clearLayers();
+  markerMap = {};
+
+  filteredEntries.forEach(e => {
+    if (!e.lat || !e.lng) return;
+
+    const marker = L.marker([e.lat, e.lng], { icon: makeIcon(e.category), id: e.id });
+    marker.bindPopup(buildPopupHTML(e), { maxWidth: 280 });
+
+    // passing false for panTo here so clicking the marker doesn't cause a double pan
+    marker.on('click', () => selectEntry(e.id, false));
+
+    markerMap[e.id] = marker;
+    markerCluster.addLayer(marker);
+  });
+
+  showBadge(filteredEntries.length + ' entries in view');
+}
+
+function buildPopupHTML(e) {
+  const colors = CATEGORY_COLORS[e.category] || CATEGORY_COLORS.other;
+  return `<div class="popup-inner">
+    <div class="popup-cat" style="color:${colors.fg}">${catLabel(e.category)}</div>
+    <div class="popup-title">${escHtml(e.title)}</div>
+    <div class="popup-nbhd">${escHtml(e.neighborhood || 'Pittsburgh')}</div>
+    ${e.excerpt ? `<div class="popup-excerpt">${escHtml(e.excerpt.slice(0, 160))}${e.excerpt.length > 160 ? '…' : ''}</div>` : ''}
+    <a href="/pages/${e.page_id || e.id}" class="popup-link">Read article →</a>
+  </div>`;
+}
+
+function selectEntry(id, panTo = true) {
+  selectedId = id;
+  document.querySelectorAll('.entry-card').forEach(el =>
+    el.classList.toggle('selected', el.dataset.id == id)
+  );
+
+  const entry = allEntries.find(e => e.id == id);
+  if (!entry) return;
+
+  const marker = markerMap[id];
+  if (marker && panTo) {
+    map.setView([entry.lat, entry.lng], Math.max(map.getZoom(), 15), { animate: true });
+    marker.openPopup();
+  }
+
+  document.querySelector(`.entry-card[data-id="${id}"]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showLoading() {
+  document.getElementById('entry-list').innerHTML =
+    `<div class="loading-state"><div class="spinner"></div>Fetching entries…</div>`;
+  document.getElementById('results-count').textContent = 'Loading…';
+}
+
+function showEmptyState() {
+  document.getElementById('entry-list').innerHTML =
+    `<div class="empty-state"><div class="big">⚠️</div>Could not load entries.</div>`;
+  document.getElementById('results-count').textContent = '';
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+let badgeTimer;
+function showBadge(msg) {
+  const badge = document.getElementById('map-badge');
+  badge.textContent = msg;
+  badge.classList.add('visible');
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(() => badge.classList.remove('visible'), 2500);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('search-input').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  applyFilters();
+});
+
+// neighborhood filtering happens server side so we need a fresh fetch when it changes
+document.getElementById('neighborhood-select').addEventListener('change', e => {
+  activeNeighborhood = e.target.value;
+  loadEntries();
+});
+
+// one delegated listener on the whole filter row rather than attaching to each chip individually
+document.getElementById('category-filters').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  activeCategory = chip.dataset.cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
+  applyFilters();
+});
+
+// once the backend supports bbox params we can pass the current viewport here
+// so PostGIS only returns entries that are actually visible on screen
+map.on('moveend', () => {
+  const b = map.getBounds();
+  // getMapLocations(activeNeighborhood, { min_lat: b.getSouth(), max_lat: b.getNorth(), min_lng: b.getWest(), max_lng: b.getEast() })
+});
+
+loadEntries();
+</script>
+
+</body>
+</html>
