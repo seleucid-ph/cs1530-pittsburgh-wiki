@@ -38,19 +38,19 @@ async function searchEntries(keyword = "", category = "", neighborhood = "") {
 }
 
 // login attempt
-async function login(username, password) {
+async function login(email, password) {
     return request(`/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email, password })
     });
 }
 
-async function signup(username, email, password) {
+async function signup(email, password) {
     return request(`/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password })
+        body: JSON.stringify({ email, password })
     });
 }
 
