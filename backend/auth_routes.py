@@ -1,18 +1,15 @@
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
+import os
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 def get_db():
-    return psycopg2.connect(
-        dbname="your_db",
-        user="your_user",
-        password="your_pass",
-        host="localhost"
-    )
+    db_url = os.environ.get("DATABASE_URL", "postgresql://localhost/pittsburgh_wiki")
+    return psycopg2.connect(db_url)
 
-#signup route
+
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json()
@@ -26,7 +23,6 @@ def signup():
 
     conn = get_db()
     cur = conn.cursor()
-
     try:
         cur.execute(
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
@@ -35,10 +31,9 @@ def signup():
         user_id = cur.fetchone()[0]
         conn.commit()
 
-        #logging in automatically after signing up
-        session["user_id"] = str(user[0])
+        session["user_id"] = str(user_id)
 
-        return jsonify({"message": "Signed in successfully!"}), 201
+        return jsonify({"message": "Signed up successfully!"}), 201
 
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
@@ -48,7 +43,7 @@ def signup():
         cur.close()
         conn.close()
 
-#login route
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -60,29 +55,22 @@ def login():
 
     conn = get_db()
     cur = conn.cursor()
-    
     try:
         cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email.lower(),))
         user = cur.fetchone()
 
-        if not user or not check_password_hash(user[1], password):  
+        if not user or not check_password_hash(user[1], password):
             return jsonify({"error": "Invalid credentials"}), 401
-        
+
         session["user_id"] = str(user[0])
 
-        return jsonify({"message": "Logged in!",
-            "redirect" : "/home"
-        }), 200
-    
+        return jsonify({"message": "Logged in!", "redirect": "/home"}), 200
+
     finally:
         cur.close()
         conn.close()
 
-    
 
-
-
-#logout route
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()

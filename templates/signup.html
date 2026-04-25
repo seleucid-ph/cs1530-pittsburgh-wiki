@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
   <style>
-    /* same style as login and map!!! */
+    /* same style as login.html */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -21,77 +21,32 @@
       --text-muted: #5A6E80;
     }
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
-    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); }
 
     nav {
-      height: 56px;
-      background: var(--steel);
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      border-bottom: 2px solid var(--gold);
+      height: 56px; background: var(--steel);
+      display: flex; align-items: center;
+      padding: 0 20px; border-bottom: 2px solid var(--gold);
     }
-
-    .brand {
-      font-family: 'Playfair Display', serif;
-      color: var(--gold);
-      text-decoration: none;
-      font-weight: 700;
-    }
-
+    .brand { font-family: 'Playfair Display', serif; color: var(--gold); text-decoration: none; font-weight: 700; }
     .brand span { color: white; }
 
-    .container {
-      height: calc(100vh - 56px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+    .container { height: calc(100vh - 56px); display: flex; justify-content: center; align-items: center; }
 
-    .card {
-      background: white;
-      padding: 32px;
-      border-radius: 12px;
-      width: 320px;
-      border: 1px solid var(--cream-dark);
-    }
+    .card { background: white; padding: 32px; border-radius: 12px; width: 320px; border: 1px solid var(--cream-dark); }
 
-    h2 {
-      font-family: 'Playfair Display', serif;
-      margin-bottom: 16px;
-    }
+    h2 { font-family: 'Playfair Display', serif; margin-bottom: 16px; }
 
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
-      border-radius: 8px;
-    }
+    input, button { width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 8px; }
+    input { border: 1.5px solid var(--cream-dark); background: var(--cream); font-family: 'DM Sans', sans-serif; }
+    input:focus { outline: none; border-color: var(--gold); background: white; }
 
-    input {
-      border: 1.5px solid var(--cream-dark);
-      background: var(--cream);
-    }
-
-    button {
-      background: var(--gold);
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
+    button { background: var(--gold); border: none; cursor: pointer; font-weight: 500; }
     button:hover { background: var(--gold-light); }
 
-    .msg {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
+    .msg { font-size: 13px; color: red; }
   </style>
 </head>
-
 <body>
 
 <nav>
@@ -101,33 +56,30 @@
 <div class="container">
   <div class="card">
     <h2>Sign Up</h2>
-
     <form id="signupForm">
       <input type="email" id="signupEmail" placeholder="Email" required>
       <input type="password" id="signupPassword" placeholder="Password" required>
       <button type="submit">Create Account</button>
     </form>
-
     <div class="msg" id="msg"></div>
   </div>
 </div>
 
-<script src="/static/js/api.js">
+<!-- api.js must load first so signup() is defined before the form handler runs -->
+<script src="/static/js/api.js"></script>
+<script>
 document.getElementById("signupForm").onsubmit = async (e) => {
   e.preventDefault();
 
-  consolve.log("SIGNUP CLICKED");
-  
   const res = await signup(
     document.getElementById("signupEmail").value,
     document.getElementById("signupPassword").value
   );
 
   if (res.message) {
-    alert("Signed up successfully!");
     window.location.href = "/login";
   } else {
-    msg.textContent = res.error;
+    document.getElementById("msg").textContent = res.error;
   }
 };
 </script>
