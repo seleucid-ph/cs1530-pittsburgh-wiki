@@ -1,6 +1,7 @@
 from flask import Flask, render_template, session, redirect
 from backend.map_routes import map_bp
 from backend.auth_routes import auth_bp
+from backend.submission_routes import submission_bp
 
 app = Flask(__name__, static_folder="frontend/static")
 app.secret_key = "secret-key"
@@ -26,3 +27,4 @@ def home():
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(map_bp)
+app.register_blueprint(submission_bp)
