@@ -20,7 +20,7 @@ def signup():
     password = data.get("password")
 
     if not email or not password:
-        return jsonify({"error": "Missing fields"}), 400
+        return jsonify({"error": "Missing email or password"}), 400
 
     hashed = generate_password_hash(password)
 
@@ -35,9 +35,10 @@ def signup():
         user_id = cur.fetchone()[0]
         conn.commit()
 
-        session["user_id"] = str(user_id)
+        #logging in automatically after signing up
+        session["user_id"] = str(user[0])
 
-        return jsonify({"message": "New account created!"}), 201
+        return jsonify({"message": "Signed in successfully!"}), 201
 
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
@@ -54,21 +55,32 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
+    if not email or not password:
+        return jsonify({"error": "Missing email or password"}), 400
+
     conn = get_db()
     cur = conn.cursor()
+    
+    try:
+        cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email.lower(),))
+        user = cur.fetchone()
 
-    cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email.lower(),))
-    user = cur.fetchone()
+        if not user or not check_password_hash(user[1], password):  
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        session["user_id"] = str(user[0])
 
-    cur.close()
-    conn.close()
+        return jsonify({"message": "Logged in!",
+            "redirect" : "/home"
+        }), 200
+    
+    finally:
+        cur.close()
+        conn.close()
 
-    if not user or not check_password_hash(user[1], password):
-        return jsonify({"error": "Invalid credentials"}), 401
+    
 
-    session["user_id"] = str(user[0])
 
-    return jsonify({"message": "Logged in!"})
 
 #logout route
 @auth_bp.route("/logout", methods=["POST"])

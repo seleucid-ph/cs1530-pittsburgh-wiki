@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Home — Pittsburgh Wiki</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --gold: #C9A84C;
+      --steel: #1C2B3A;
+      --cream: #F7F3EC;
+      --white: #FFFFFF;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      text-align: center;
+    }
+
+    nav {
+      height: 56px;
+      background: var(--steel);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 2px solid var(--gold);
+    }
+
+    .brand {
+      font-family: 'Playfair Display';
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .brand span { color: white; }
+
+    .container {
+      padding-top: 120px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display';
+      color: var(--steel);
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 18px;
+      background: var(--gold);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: #F0D98A;
+    }
+  </style>
+</head>
+
+<body>
+
+<nav>
+  <a href="/" class="brand">Pittsburgh <span>Wiki</span></a>
+</nav>
+
+<div class="container">
+  <h1>Welcome back!</h1>
+
+  <button onclick="window.location.href='/map'">
+    Go to Map!
+  </button>
+
+  <button onclick="logout()">Logout</button>
+
+  <script>
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/";
+}
+</script>
+</div>
+
+</body>
+</html>
