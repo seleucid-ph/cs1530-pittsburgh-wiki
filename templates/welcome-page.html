@@ -1,10 +1,137 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        
-    </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome to the Pittsburgh Wiki!</title>
 
-    <body>
-        <p>This is the welcome page!</p>
-    </body>
+  <!-- using same style choices as map.html for consistency -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #F0D98A;
+      --steel: #1C2B3A;
+      --cream: #F7F3EC;
+      --cream-dark: #EDE7D9;
+      --text-primary: #1C2B3A;
+      --text-muted: #5A6E80;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text-primary);
+    }
+
+    /*same design as map.html*/
+    nav {
+      height: 56px;
+      background: var(--steel);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 2px solid var(--gold);
+    }
+
+    .brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: var(--white);
+      font-weight: 500;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: calc(100vh - 56px);
+      padding: 20px;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: var(--white);
+      padding: 30px;
+      border-radius: 12px;
+      width: 300px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border: 1px solid var(--cream-dark);
+    }
+
+    .card h2 {
+      font-family: 'Playfair Display', serif;
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 14px;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 8px;
+      background: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--gold);
+      background: var(--white);
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: var(--gold);
+      border: none;
+      border-radius: 8px;
+      color: var(--steel);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--gold-light);
+    }
+
+    .message {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+
+<body>
+
+<nav>
+  <a href="/" class="brand">Pittsburgh <span>Wiki</span></a>
+</nav>
+
+<div class="container">
+  <div class="card">
+    <h1>Welcome to Pittsburgh Wiki</h1>
+    <p>
+      Log-in or sign up today to discover some hidden gems within The Steel City.
+    </p>
+
+    <a href="/login" class="btn btn-primary">Login</a>
+    <a href="/signup" class="btn btn-secondary">Sign Up</a>
+  </div>
+</div>
+
+</body>
 </html>
