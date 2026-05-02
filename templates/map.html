@@ -594,7 +594,6 @@ document.getElementById('category-filters').addEventListener('click', e => {
 // so PostGIS only returns entries that are actually visible on screen
 map.on('moveend', () => {
   const b = map.getBounds();
-  // getMapLocations(activeNeighborhood, { min_lat: b.getSouth(), max_lat: b.getNorth(), min_lng: b.getWest(), max_lng: b.getEast() })
 });
 
 loadEntries();
