@@ -122,3 +122,4 @@ cur.close()
 conn.close()
 
 print(f"Seeded {approved} entries through the submission flow.")
+

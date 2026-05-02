@@ -20,7 +20,7 @@ cs1530-pittsburgh-wiki/
 ├── backend/
 │   ├── map_routes.py                /map page and /api/map, /api/neighborhoods endpoints
 │   ├── auth_routes.py               /api/auth/signup, /api/auth/login, /api/auth/logout
-│   └── seed_test_data.py            populates DB with sample Pittsburgh entries for local dev
+│   └── seed_data.py            populates DB with sample Pittsburgh entries for local dev
 ├── frontend/
 │   └── static/
 │       └── js/
@@ -58,7 +58,7 @@ psql -d pittsburgh_wiki -f database/schema.sql
 pip install -r requirements.txt
 
 # seed test data
-python backend/seed_test_data.py
+python backend/seed_data.py
 ```
 
 ### Running the app
@@ -76,7 +76,7 @@ If you need to wipe and re-seed the database:
 ```bash
 psql -d pittsburgh_wiki -c "DROP TABLE IF EXISTS submission_history, moderation_queue, submissions, categories, neighborhoods, users CASCADE;"
 psql -d pittsburgh_wiki -f database/schema.sql
-python backend/seed_test_data.py
+python backend/seed_data.py
 ```
 
 ### Environment variables
@@ -97,7 +97,7 @@ export DATABASE_URL=postgresql://user:password@host/dbname
 
 **Frontend API Layer** — Centralized `api.js` with fetch wrappers for all endpoints covering map, pages, search, auth, submissions, and moderation.
 
-**Test Data Seed** — Seeds 8 real Pittsburgh locations by going through the full submission and moderation flow so local dev matches production behavior.
+**Data Seed** — Seeds 8 real Pittsburgh locations by going through the full submission and moderation flow so local dev matches production behavior.
 
 ## Team
 
